@@ -192,7 +192,7 @@ public class ProxyFileDownloader implements Runnable {
 							}
 
 							time += 5;
-							Thread.currentThread().sleep(5);
+							Thread.sleep(5);
 						}
 					}
 

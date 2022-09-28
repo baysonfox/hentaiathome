@@ -24,7 +24,6 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 package hath.base;
 
 import java.nio.ByteBuffer;
-import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.nio.channels.FileChannel;
 

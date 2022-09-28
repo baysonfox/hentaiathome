@@ -32,7 +32,7 @@ import java.io.ObjectOutputStream;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.Enumeration;
-import java.util.List;
+import java.util.Map.Entry;
 import java.util.Hashtable;
 
 public class CacheHandler {
@@ -207,7 +207,11 @@ public class CacheHandler {
 			else {
 				Out.info("CacheHandler: All persistent fields found, loading remaining objects");
 
-				staticRangeOldest = (Hashtable<String,Long>) readCacheObject(getPersistentAgesFile(), agesHash);
+				Hashtable<?,?> tmp = (Hashtable<?,?>) readCacheObject(getPersistentAgesFile(), agesHash);
+				staticRangeOldest = new Hashtable<String, Long>(tmp.size());
+				for (Entry<?,?> entry : tmp.entrySet()) {
+					staticRangeOldest.put((String) entry.getKey(), (Long) entry.getValue());
+				}
 				Out.info("CacheHandler: Loaded static range ages");
 
 				if(!Settings.isUseLessMemory()) {

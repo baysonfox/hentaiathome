@@ -51,8 +51,10 @@ public class HTTPServer implements Runnable {
 	private int sessionCount = 0, currentConnId = 0;
 	private boolean allowNormalConnections = false, isRestarting = false, isTerminated = false;
 	private Hashtable<String,FloodControlEntry> floodControlTable;
-	private Pattern localNetworkPattern;
 	private Date certExpiry;
+
+	//  private network: localhost, 127.x.y.z, 10.0.0.0 - 10.255.255.255, 172.16.0.0 - 172.31.255.255,  192.168.0.0 - 192.168.255.255, 169.254.0.0 -169.254.255.255
+	private static final Pattern localNetworkPattern = Pattern.compile("^(?:localhost|127\\.|10\\.|192\\.168\\.|172\\.(?:1[6-9]|2[0-9]|3[0-1])\\.|169\\.254\\.|::1|0:0:0:0:0:0:0:1|fc|fd).*$");
 
 	public HTTPServer(HentaiAtHomeClient client) {
 		this.client = client;
@@ -62,9 +64,6 @@ public class HTTPServer implements Runnable {
 		if(!Settings.isDisableBWM()) {
 			bandwidthMonitor = new HTTPBandwidthMonitor();
 		}
-		
-		//  private network: localhost, 127.x.y.z, 10.0.0.0 - 10.255.255.255, 172.16.0.0 - 172.31.255.255,  192.168.0.0 - 192.168.255.255, 169.254.0.0 -169.254.255.255
-		localNetworkPattern = Pattern.compile("^((localhost)|(127\\.)|(10\\.)|(192\\.168\\.)|(172\\.((1[6-9])|(2[0-9])|(3[0-1]))\\.)|(169\\.254\\.)|(::1)|(0:0:0:0:0:0:0:1)|(fc)|(fd)).*$");
 	}
 
 	public boolean startConnectionListener(int port) {

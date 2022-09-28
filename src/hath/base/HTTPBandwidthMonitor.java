@@ -71,7 +71,7 @@ public class HTTPBandwidthMonitor {
 				//Out.debug("sleeping with currentTick=" + currentTick + " second=" + currentSecond + " bytesPerTick=" + bytesPerTick + " bytesThisTick=" + bytesThisTick + " bytesLastWindow=" + bytesLastWindow + " bytesLastSecond=" + bytesLastSecond);
 
 				try {
-					thread.sleep(10);
+					Thread.sleep(10);
 				} catch(Exception e) {
 					e.printStackTrace();
 				}

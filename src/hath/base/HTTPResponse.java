@@ -120,6 +120,9 @@ public class HTTPResponse {
 		return new HTTPResponseProcessorText("OK:" + successfulTests + "-" + totalTimeMillis);
 	}
 
+	private static final Pattern fileindexPattern = Pattern.compile("^\\d+$");
+	private static final Pattern xresPattern = Pattern.compile("^org|\\d+$");
+
 	public void parseRequest(String request, boolean localNetworkAccess) {
 		if(request == null) {
 			Out.debug(session + " Client did not send a request.");
@@ -186,7 +189,7 @@ public class HTTPResponse {
 			if(keystampRejected) {
 				responseStatusCode = 403;
 			}
-			else if(requestedHVFile == null || fileindex == null || xres == null || !Pattern.matches("^\\d+$", fileindex) || !Pattern.matches("^org|\\d+$", xres)) {
+			else if(requestedHVFile == null || fileindex == null || xres == null || !fileindexPattern.matcher(fileindex).matches() || !xresPattern.matcher(xres).matches()) {
 				Out.debug(session + " Invalid or missing arguments.");
 				responseStatusCode = 404;
 			}

@@ -43,7 +43,7 @@ public class HTTPSession implements Runnable {
 
 	public static final String CRLF = "\r\n";
 
-	private static final Pattern getheadPattern = Pattern.compile("^((GET)|(HEAD)).*", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+	private static final Pattern getheadPattern = Pattern.compile("^(?:GET|HEAD) .*", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
 
 	private SSLSocket socket;
 	private HTTPServer httpServer;

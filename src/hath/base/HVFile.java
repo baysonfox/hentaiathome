@@ -86,8 +86,10 @@ public class HVFile {
 	
 
 	// static stuff
+	private static final java.util.regex.Pattern validHVFPattern = java.util.regex.Pattern.compile("^[a-f0-9]{40}-[0-9]{1,8}-[0-9]{1,5}-[0-9]{1,5}-(?:jpg|png|gif|wbm)$");
+
 	public static boolean isValidHVFileid(String fileid) {
-		return java.util.regex.Pattern.matches("^[a-f0-9]{40}-[0-9]{1,8}-[0-9]{1,5}-[0-9]{1,5}-((jpg)|(png)|(gif)|(wbm))$", fileid);
+		return validHVFPattern.matcher(fileid).matches();
 	}
 
 	public static HVFile getHVFileFromFile(File file) {

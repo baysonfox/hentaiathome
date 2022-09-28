@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash -e
 
 cd build
 jar cvfm HentaiAtHome.jar ../src/hath/base/HentaiAtHome.manifest hath/base

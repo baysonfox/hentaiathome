@@ -56,12 +56,12 @@ public class HTTPResponseProcessorProxy extends HTTPResponseProcessor {
 		tcpBuffer.clear();
 		
 		int timeout = 0;
-		int nextReadThrehold = Math.min(getContentLength(), readoff + tcpBuffer.limit());
-		//Out.debug("Filling buffer with limit=" + tcpBuffer.limit() + " at readoff=" + readoff + ", trying to read " + (nextReadThrehold - readoff) + " bytes up to byte " + nextReadThrehold);
+		int nextReadThreshold = Math.min(getContentLength(), readoff + tcpBuffer.limit());
+		//Out.debug("Filling buffer with limit=" + tcpBuffer.limit() + " at readoff=" + readoff + ", trying to read " + (nextReadThreshold - readoff) + " bytes up to byte " + nextReadThreshold);
 
-		while(nextReadThrehold > proxyDownloader.getCurrentWriteoff()) {
+		while(nextReadThreshold > proxyDownloader.getCurrentWriteoff()) {
 			try {
-				Thread.currentThread().sleep(10);
+				Thread.sleep(10);
 			} catch(Exception e) {}
 
 			if(++timeout > 30000) {

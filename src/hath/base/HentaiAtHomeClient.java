@@ -52,7 +52,6 @@ You can specify a different blocksize with --filesystem-blocksize=xxx or turn th
 
 package hath.base;
 
-import java.io.File;
 import java.lang.Thread;
 import java.lang.Runtime;
 
@@ -202,7 +201,7 @@ public class HentaiAtHomeClient implements Runnable {
 			threadInterruptable = true;
 
 			try {
-				myThread.sleep(Math.max(1000, 10000 - lastThreadTime));
+				Thread.sleep(Math.max(1000, 10000 - lastThreadTime));
 			}
 			catch(java.lang.InterruptedException e) {
 				Out.debug("Master thread sleep interrupted");
@@ -228,17 +227,17 @@ public class HentaiAtHomeClient implements Runnable {
 					}
 					else {
 						try {
-							myThread.sleep(5000);
+							Thread.sleep(5000);
 							httpServerShutdown(true);
 
 							int restartTimeout = 0;
 							
 							do {
 								Out.info("Waiting for HTTPServer thread to fully terminate..." + (restartTimeout > 1 ? " (waited " + (restartTimeout * 5) + " seconds)" : ""));
-								myThread.sleep(5000);
+								Thread.sleep(5000);
 							} while(!httpServer.isThreadTerminated() && ++restartTimeout < 60);
 							
-							myThread.sleep(1000);
+							Thread.sleep(1000);
 						} catch(java.lang.InterruptedException e) {}
 
 						httpServer = new HTTPServer(this);
@@ -458,7 +457,7 @@ public class HentaiAtHomeClient implements Runnable {
 	
 	private void httpServerShutdown(boolean restart) {
 		try {
-			Thread.currentThread().sleep(5000);
+			Thread.sleep(5000);
 		} catch(java.lang.InterruptedException e) {}
 
 		httpServer.stopConnectionListener(restart);
@@ -466,7 +465,7 @@ public class HentaiAtHomeClient implements Runnable {
 		
 		while(++closeWaitCycles < maxWaitCycles && Stats.getOpenConnections() > 0) {
 			try {
-				Thread.currentThread().sleep(1000);
+				Thread.sleep(1000);
 			} catch(java.lang.InterruptedException e) {}
 			
 			if(closeWaitCycles % 5 == 0) {

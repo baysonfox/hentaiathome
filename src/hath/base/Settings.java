@@ -26,7 +26,6 @@ package hath.base;
 import java.io.File;
 import java.net.InetAddress;
 import java.util.*;
-import java.lang.*;
 
 public class Settings {
 	public static final String NEWLINE = System.getProperty("line.separator");
@@ -71,8 +70,10 @@ public class Settings {
 		activeGUI = gui;
 	}
 
+	private final static java.util.regex.Pattern loginCredentialsPattern = java.util.regex.Pattern.compile("^[a-zA-Z0-9]{" + CLIENT_KEY_LENGTH + "}$");
+	
 	public static boolean loginCredentialsAreSyntaxValid() {
-		return clientID > 0 && java.util.regex.Pattern.matches("^[a-zA-Z0-9]{" + CLIENT_KEY_LENGTH + "}$", clientKey);
+		return clientID > 0 && loginCredentialsPattern.matcher(clientKey).matches();
 	}
 
 	public static boolean loadClientLoginFromFile() {

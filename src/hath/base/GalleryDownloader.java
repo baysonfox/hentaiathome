@@ -26,7 +26,6 @@ package hath.base;
 import java.lang.Thread;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Hashtable;
 import java.util.List;
 import java.util.regex.Pattern;
 import java.io.File;
@@ -104,7 +103,7 @@ public class GalleryDownloader implements Runnable {
 
 					if(sleepTime > 0) {
 						try {
-							myThread.sleep(sleepTime);
+							Thread.sleep(sleepTime);
 						}
 						catch(java.lang.InterruptedException e) {}
 					}
@@ -146,6 +145,11 @@ public class GalleryDownloader implements Runnable {
 			Out.warning("GalleryDownloader: Permanently failed downloading gallery: " + title);
 		}
 	}
+
+	private static final Pattern xresPattern = Pattern.compile("^org|\\d+$");
+	private static final Pattern titleSpecialsPattern = Pattern.compile("(\\*|\\\"|\\\\|<|>|:\\|\\?)");
+	private static final Pattern repetedSpacePattern = Pattern.compile("\\s+");
+	private static final Pattern leadtailSpacePattern = Pattern.compile("(^\\s+|\\s+$)");
 
 	private boolean initializeNewGalleryMeta() {
 		if(markDownloaded) {
@@ -228,7 +232,7 @@ public class GalleryDownloader implements Runnable {
 						Out.debug("GalleryDownloader: Parsed filecount=" + filecount);
 					}
 					else if(split[0].equals("MINXRES")) {
-						if(Pattern.matches("^org|\\d+$", split[1])) {
+						if(xresPattern.matcher(split[1]).matches()) {
 							minxres = split[1];
 							Out.debug("GalleryDownloader: Parsed minxres=" + minxres);
 						}
@@ -237,7 +241,11 @@ public class GalleryDownloader implements Runnable {
 						}
 					}
 					else if(split[0].equals("TITLE")) {
-						title = split[1].replaceAll("(\\*|\\\"|\\\\|<|>|:\\|\\?)", "").replaceAll("\\s+", " ").replaceAll("(^\\s+|\\s+$)", "");
+						title = leadtailSpacePattern.matcher(
+							repetedSpacePattern.matcher(
+								titleSpecialsPattern.matcher(split[1]).replaceAll("")
+								).replaceAll(" ")
+							).replaceAll("");
 						Out.debug("GalleryDownloader: Parsed title=" + title);
 						
 						// MINXRES must be passed before TITLE for this to work. the only purpose is to make distinct titles
