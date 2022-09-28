@@ -23,7 +23,7 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 package hath.base;
 
-import java.net.InetSocketAddress;
+import java.net.Socket;
 import java.net.InetAddress;
 import java.lang.Thread;
 import java.util.*;
@@ -31,10 +31,11 @@ import java.util.regex.Pattern;
 import java.io.File;
 import java.io.InputStream;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.security.KeyStore;
 import java.security.cert.X509Certificate;
 import java.net.URL;
-import javax.net.ssl.SSLSocket;
+import java.net.ServerSocket;
 import javax.net.ssl.SSLServerSocket;
 import javax.net.ssl.SSLServerSocketFactory;
 import javax.net.ssl.SSLContext;
@@ -44,12 +45,12 @@ import javax.net.ssl.TrustManagerFactory;
 public class HTTPServer implements Runnable {
 	private HentaiAtHomeClient client;
 	private HTTPBandwidthMonitor bandwidthMonitor = null;
-	private SSLServerSocket listener = null;
+	private ServerSocket listener = null;
 	private SSLContext sslContext = null;
 	private Thread myThread = null;
 	private List<HTTPSession> sessions;
 	private int sessionCount = 0, currentConnId = 0;
-	private boolean allowNormalConnections = false, isRestarting = false, isTerminated = false;
+	private boolean allowNormalConnections = false, isRestarting = false, isTerminated = false, isDisableSSL = false;
 	private Hashtable<String,FloodControlEntry> floodControlTable;
 	private Date certExpiry;
 
@@ -69,6 +70,8 @@ public class HTTPServer implements Runnable {
 	public boolean startConnectionListener(int port) {
 		try {
 			final String certPass = Settings.getClientKey();
+			isDisableSSL = Settings.isDisableSSL();
+			boolean isTriggerCertSyncfile  = Settings.isTriggerCertSyncfile();
 
 			Out.info("Requesting certificate from server...");
 			File certFile = new File(Settings.getDataDir(), "hathcert.p12");
@@ -95,6 +98,12 @@ public class HTTPServer implements Runnable {
 				return false;
 			}
 
+			if (isTriggerCertSyncfile) {
+				FileOutputStream syncStream = new FileOutputStream(Settings.getDataDir() + "/keysync.pipe", false);
+				syncStream.write("sync\n".getBytes());
+				syncStream.close();
+			}
+			
 			TrustManagerFactory tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
 			tmf.init(ks);
 			
@@ -105,17 +114,22 @@ public class HTTPServer implements Runnable {
 
 			Out.debug("Initialized KeyManagerFactory with algorithm=" + kmf.getAlgorithm());
 
-			sslContext = SSLContext.getInstance("TLS");
-			sslContext.init(kmf.getKeyManagers(), tmf.getTrustManagers(), null);
-
 			Out.info("Starting up the internal HTTP Server...");
-			SSLServerSocketFactory ssf = sslContext.getServerSocketFactory();
-			listener = (SSLServerSocket) ssf.createServerSocket(port);
-			listener.setEnabledProtocols(new String[]{"TLSv1.2", "TLSv1.1", "TLSv1"});
+			if (isDisableSSL) {
+				listener = new ServerSocket(port);
+			} else {
+				sslContext = SSLContext.getInstance("TLS");
+				sslContext.init(kmf.getKeyManagers(), tmf.getTrustManagers(), null);
 
-			Out.debug("Initialized SSLContext with cert " + certFile + " and protocol " + sslContext.getProtocol());
-			Out.debug("Supported ciphers: " + Arrays.toString(sslContext.getSupportedSSLParameters().getCipherSuites()));
-			Out.debug("Enabled protocols: " + Arrays.toString(listener.getEnabledProtocols()));
+				SSLServerSocketFactory ssf = sslContext.getServerSocketFactory();
+				listener = ssf.createServerSocket(port);
+				SSLServerSocket tmpListener = (SSLServerSocket) listener;
+				tmpListener.setEnabledProtocols(new String[]{"TLSv1.2", "TLSv1.1", "TLSv1"});
+
+				Out.debug("Initialized SSLContext with cert " + certFile + " and protocol " + sslContext.getProtocol());
+				Out.debug("Supported ciphers: " + Arrays.toString(sslContext.getSupportedSSLParameters().getCipherSuites()));
+				Out.debug("Enabled protocols: " + Arrays.toString(tmpListener.getEnabledProtocols()));
+			}
 			
 			myThread = new Thread(this);
 			myThread.start();
@@ -220,51 +234,54 @@ public class HTTPServer implements Runnable {
 	public void run() {
 		try {
 			while(true) {
-				SSLSocket socket = (SSLSocket) listener.accept();
+				Socket socket = listener.accept();
 				boolean forceClose = false;
 				InetAddress addr = socket.getInetAddress();
 				String hostAddress = addr.getHostAddress().toLowerCase();
 				boolean localNetworkAccess = Settings.getClientHost().replace("::ffff:", "").equals(hostAddress) || localNetworkPattern.matcher(hostAddress).matches();
-				boolean apiServerAccess = Settings.isValidRPCServer(addr);
 
-				if(!apiServerAccess && !allowNormalConnections) {
-					Out.warning("Rejecting connection request from " + hostAddress + " during startup.");
-					forceClose = true;
-				}
-				else if(!apiServerAccess && !localNetworkAccess) {
-					// connections from the API Server and the local network are not subject to the max connection limit or the flood control
+				if (! isDisableSSL) {
+					boolean apiServerAccess = Settings.isValidRPCServer(addr);
 
-					int maxConnections = Settings.getMaxConnections();
-
-					if(sessionCount > maxConnections) {
-						Out.warning("Exceeded the maximum allowed number of incoming connections (" + maxConnections + ").");
+					if(!apiServerAccess && !allowNormalConnections) {
+						Out.warning("Rejecting connection request from " + hostAddress + " during startup.");
 						forceClose = true;
 					}
-					else {
-						if(sessionCount > maxConnections * 0.8) {
-							// let the dispatcher know that we're close to the breaking point. this will make it back off for 30 sec, and temporarily turns down the dispatch rate to half.
-							client.getServerHandler().notifyOverload();
-						}
-						
-						if(!Settings.isDisableFloodControl()) {
-							// this flood control will stop clients from opening more than ten connections over a (roughly) five second floating window, and forcibly block them for 60 seconds if they do.
-							FloodControlEntry fce = null;
-							synchronized(floodControlTable) {
-								fce = floodControlTable.get(hostAddress);
-								if(fce == null) {
-									fce = new FloodControlEntry(addr);
-									floodControlTable.put(hostAddress, fce);
-								}
-							}
+					else if(!apiServerAccess && !localNetworkAccess) {
+						// connections from the API Server and the local network are not subject to the max connection limit or the flood control
 
-							if(!fce.isBlocked()) {
-								if(!fce.hit()) {
-									Out.warning("Flood control activated for  " + hostAddress + " (blocking for 60 seconds)");
+						int maxConnections = Settings.getMaxConnections();
+
+						if(sessionCount > maxConnections) {
+							Out.warning("Exceeded the maximum allowed number of incoming connections (" + maxConnections + ").");
+							forceClose = true;
+						}
+						else {
+							if(sessionCount > maxConnections * 0.8) {
+								// let the dispatcher know that we're close to the breaking point. this will make it back off for 30 sec, and temporarily turns down the dispatch rate to half.
+								client.getServerHandler().notifyOverload();
+							}
+							
+							if(!Settings.isDisableFloodControl()) {
+								// this flood control will stop clients from opening more than ten connections over a (roughly) five second floating window, and forcibly block them for 60 seconds if they do.
+								FloodControlEntry fce = null;
+								synchronized(floodControlTable) {
+									fce = floodControlTable.get(hostAddress);
+									if(fce == null) {
+										fce = new FloodControlEntry(addr);
+										floodControlTable.put(hostAddress, fce);
+									}
+								}
+
+								if(!fce.isBlocked()) {
+									if(!fce.hit()) {
+										Out.warning("Flood control activated for  " + hostAddress + " (blocking for 60 seconds)");
+										forceClose = true;
+									}
+								}
+								else {
 									forceClose = true;
 								}
-							}
-							else {
-								forceClose = true;
 							}
 						}
 					}
@@ -277,7 +294,7 @@ public class HTTPServer implements Runnable {
 				}
 				else {
 					// all is well. keep truckin'
-					HTTPSession hs = new HTTPSession(socket, getNewConnId(), localNetworkAccess, this);
+					HTTPSession hs = new HTTPSession(socket, getNewConnId(), localNetworkAccess, allowNormalConnections, isDisableSSL, this);
 
 					synchronized(sessions) {
 						sessions.add(hs);

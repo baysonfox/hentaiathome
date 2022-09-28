@@ -123,7 +123,7 @@ public class HTTPResponse {
 	private static final Pattern fileindexPattern = Pattern.compile("^\\d+$");
 	private static final Pattern xresPattern = Pattern.compile("^org|\\d+$");
 
-	public void parseRequest(String request, boolean localNetworkAccess) {
+	public void parseRequest(String request, boolean localNetworkAccess, boolean allowNormalConnections) {
 		if(request == null) {
 			Out.debug(session + " Client did not send a request.");
 			responseStatusCode = 400;
@@ -164,6 +164,11 @@ public class HTTPResponse {
 				return;
 			}
 
+			if (!allowNormalConnections) {
+				responseStatusCode = 503;
+				return;
+			}
+
 			String fileid = urlparts[2];
 			HVFile requestedHVFile = HVFile.getHVFileFromFileid(fileid);
 			Hashtable<String,String> additional = Tools.parseAdditional(urlparts[3]);
@@ -195,7 +200,7 @@ public class HTTPResponse {
 			}
 			else if(requestedHVFile.getLocalFileRef().exists()) {	
 				// hpc will update responseStatusCode
-				hpc = new HTTPResponseProcessorFile(requestedHVFile);
+				hpc = (Settings.getFileRedirectHeader() != null) ? new HTTPResponseProcessorFileRedirect(requestedHVFile) : new HTTPResponseProcessorFileRedirect(requestedHVFile);
 				session.getHTTPServer().getHentaiAtHomeClient().getCacheHandler().markRecentlyAccessed(requestedHVFile);
 			}
 			else if(Settings.isStaticRange(fileid)) {
@@ -307,6 +312,9 @@ public class HTTPResponse {
 			if(responseStatusCode == 405) {
 				hpc.addHeaderField("Allow", "GET,HEAD");
 			}
+		}
+		else if(hpc instanceof HTTPResponseProcessorFileRedirect) {
+			responseStatusCode = hpc.initialize();
 		}
 		else if(hpc instanceof HTTPResponseProcessorFile) {
 			responseStatusCode = hpc.initialize();

@@ -56,11 +56,11 @@ public class Settings {
 	private static String rpcServerCurrent = null, rpcServerLastFailed = null;
 	private static Hashtable<String, Integer> staticRanges = null;
 	private static File datadir = null, logdir = null, cachedir = null, tempdir = null, downloaddir = null;
-	private static String clientKey = "", clientHost = "", dataDirPath = "data", logDirPath = "log", cacheDirPath = "cache", tempDirPath = "tmp", downloadDirPath = "download";
+	private static String clientKey = "", clientHost = "", dataDirPath = "data", logDirPath = "log", cacheDirPath = "cache", tempDirPath = "tmp", downloadDirPath = "download", fileRedirectHeader = null, fileRedirectPath = null;
 
 	private static int clientID = 0, clientPort = 0, throttle_bytes = 0, overrideConns = 0, serverTimeDelta = 0, maxAllowedFileSize = 104857600, currentStaticRangeCount = 0;
 	private static long disklimit_bytes = 0, diskremaining_bytes = 0, fileSystemBlocksize = 4096;
-	private static boolean verifyCache = false, rescanCache = false, skipFreeSpaceCheck = false, warnNewClient = false, useLessMemory = false, disableBWM = false, disableDownloadBWM = false, disableLogs = false, flushLogs = false, disableIPOriginCheck = false, disableFloodControl = false;
+	private static boolean verifyCache = false, rescanCache = false, skipFreeSpaceCheck = false, warnNewClient = false, useLessMemory = false, disableBWM = false, disableDownloadBWM = false, disableLogs = false, flushLogs = false, disableIPOriginCheck = false, disableFloodControl = false, disableSSL = false, triggerCertSyncfile = false;
 
 	public static void setActiveClient(HentaiAtHomeClient client) {
 		activeClient = client;
@@ -277,6 +277,18 @@ public class Settings {
 			else if(setting.equals("disable_flood_control")) {
 				disableFloodControl = value.equals("true");
 			}
+			else if(setting.equals("disable_ssl")) {
+				disableSSL = value.equals("true");
+			}
+			else if(setting.equals("file_redirect_header")) {
+				fileRedirectHeader = value;
+			}
+			else if(setting.equals("file_redirect_path")) {
+				fileRedirectPath = value;
+			}
+			else if(setting.equals("trigger_cert_syncfile")) {
+				triggerCertSyncfile = value.equals("true");
+			}
 			else if(setting.equals("skip_free_space_check")) {
 				skipFreeSpaceCheck = value.equals("true");
 			}
@@ -404,6 +416,14 @@ public class Settings {
 		return fileSystemBlocksize;
 	}
 
+	public static String getFileRedirectHeader() {
+		return fileRedirectHeader;
+	}
+
+	public static String getFileRedirectPath() {
+		return fileRedirectPath;
+	}
+
 	public static int getServerTime() {
 		return (int) (System.currentTimeMillis() / 1000) + serverTimeDelta;
 	}
@@ -464,6 +484,12 @@ public class Settings {
 		return disableFloodControl;
 	}
 
+	public static boolean isDisableSSL() {
+		return disableSSL;
+	}
+	public static boolean isTriggerCertSyncfile() {
+		return triggerCertSyncfile;
+	}
 	public static HentaiAtHomeClient getActiveClient() {
 		return activeClient;
 	}

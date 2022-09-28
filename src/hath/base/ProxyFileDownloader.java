@@ -40,7 +40,7 @@ public class ProxyFileDownloader implements Runnable {
 	private HentaiAtHomeClient client;
 	private HVFile requestedHVFile;
 	private String fileid;
-	private File tempFile = null, returnFile = null;
+	private File tempFile = null;
 	private RandomAccessFile fileHandle;
 	private FileChannel fileChannel;
 	private URL[] sources;

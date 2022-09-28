@@ -35,29 +35,34 @@ import java.io.InputStreamReader;
 import java.io.DataOutputStream;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
-import java.util.regex.Pattern;
 import java.util.regex.Matcher;
-import javax.net.ssl.SSLSocket;
+import java.util.regex.Pattern;
+import java.net.Socket;
+import java.net.UnknownHostException;
 
 public class HTTPSession implements Runnable {
 
 	public static final String CRLF = "\r\n";
 
 	private static final Pattern getheadPattern = Pattern.compile("^(?:GET|HEAD) .*", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+	private static final Pattern realIpPattern = Pattern.compile("^X-Real-IP: ([\\d:\\.]+)", Pattern.CASE_INSENSITIVE);
 
-	private SSLSocket socket;
+	private Socket socket;
 	private HTTPServer httpServer;
 	private int connId;
 	private Thread myThread;
-	private boolean localNetworkAccess;
+	private boolean localNetworkAccess, allowNormalConnections, useHeaderAddress;
+	private InetAddress remoteAddress;
 	private long sessionStartTime, lastPacketSend;
 	private HTTPResponse hr;
 
-	public HTTPSession(SSLSocket socket, int connId, boolean localNetworkAccess, HTTPServer httpServer) {
+	public HTTPSession(Socket socket, int connId, boolean localNetworkAccess, boolean allowNormalConnections, boolean disableSSL, HTTPServer httpServer) {
 		sessionStartTime = System.currentTimeMillis();
 		this.socket = socket;
 		this.connId = connId;
 		this.localNetworkAccess = localNetworkAccess;
+		this.allowNormalConnections = allowNormalConnections;
+		this.useHeaderAddress = disableSSL;
 		this.httpServer = httpServer;
 	}
 
@@ -91,6 +96,7 @@ public class HTTPSession implements Runnable {
 			// read the header and parse the request - this will also update the response code and initialize the proper response processor
 			String request = null;
 			int rcvdBytes = 0;
+			remoteAddress = null;
 
 			// ignore every single line except for the request one. we SSL now, so if there is no end-of-line, just wait for the timeout
 			do {
@@ -99,8 +105,19 @@ public class HTTPSession implements Runnable {
 				if(read != null) {
 					rcvdBytes += read.length();
 
-					if(getheadPattern.matcher(read).matches()) {
+					if(request == null && getheadPattern.matcher(read).matches()) {
 						request = read.substring(0, Math.min(1000, read.length()));
+					}
+					else if (useHeaderAddress && remoteAddress == null && realIpPattern.matcher(read).matches()) {
+						Matcher matcher = realIpPattern.matcher(read);
+						matcher.find();
+						// Out.info("Overriding remoteAddres based on line " + matcher.group(1) +  " with: " + matcher.group(1));
+						try {
+							remoteAddress = InetAddress.getByName(matcher.group(1));
+							info = this.toString() + " ";
+						} catch (UnknownHostException e) {
+							Out.error("Unable to parse X-Real-IP address \"" + matcher.group(1) + "\"");
+						}
 					}
 					else if(read.isEmpty()) {
 						break;
@@ -112,7 +129,7 @@ public class HTTPSession implements Runnable {
 			} while(true);
 			
 			hr = new HTTPResponse(this);
-			hr.parseRequest(request, localNetworkAccess);
+			hr.parseRequest(request, localNetworkAccess, allowNormalConnections);
 
 			// get the status code and response processor - in case of an error, this will be a text type with the error message
 			hpc = hr.getHTTPResponseProcessor();
@@ -250,6 +267,7 @@ public class HTTPSession implements Runnable {
 			case 418: return "HTTP/1.1 418 I'm a teapot" + CRLF;
 			case 501: return "HTTP/1.1 501 Not Implemented" + CRLF;
 			case 502: return "HTTP/1.1 502 Bad Gateway" + CRLF;
+			case 503: return "HTTP/1.1 503 Service Unavailable" + CRLF;
 			default: return "HTTP/1.1 500 Internal Server Error" + CRLF;
 		}
 	}
@@ -292,7 +310,7 @@ public class HTTPSession implements Runnable {
 	}
 
 	public InetAddress getSocketInetAddress() {
-		return socket.getInetAddress();
+		return remoteAddress != null ? remoteAddress : socket.getInetAddress();
 	}
 
 	public boolean isLocalNetworkAccess() {
