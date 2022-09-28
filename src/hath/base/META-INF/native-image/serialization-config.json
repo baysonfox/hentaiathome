@@ -1,0 +1,21 @@
+{
+  "types":[
+    {
+      "name":"java.lang.Long"
+    },
+    {
+      "name":"java.lang.Number"
+    },
+    {
+      "name":"java.lang.String"
+    },
+    {
+      "name":"java.util.Hashtable"
+    },
+    {
+      "name":"short[]"
+    }
+  ],
+  "lambdaCapturingTypes":[
+  ]
+}
