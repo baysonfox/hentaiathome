@@ -1,0 +1,31 @@
+stages:
+  - build
+  - docker
+
+build-job:
+  stage: build
+  image: 
+    name: ghcr.io/graalvm/native-image:latest
+    entrypoint: [ "/bin/bash", "-l", "-c" ]
+  tags:
+    - docker
+  script:
+    - microdnf install findutils
+    - ./make.sh && ./makejar.sh && ./make-native-image.sh
+  artifacts:
+    paths:
+      - build/HentaiAtHome.jar
+      - build/HentaiAtHomeGUI.jar
+      - build/HentaiAtHome
+
+docker-job:
+  stage: docker
+  tags:
+    - shell
+  dependencies:
+    - build-job
+  script:
+    - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
+    - docker build -t $CI_REGISTRY_IMAGE:latest .
+    - docker push $CI_REGISTRY_IMAGE:latest
+
