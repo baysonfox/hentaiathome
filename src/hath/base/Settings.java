@@ -60,7 +60,7 @@ public class Settings {
 
 	private static int clientID = 0, clientPort = 0, throttle_bytes = 0, overrideConns = 0, serverTimeDelta = 0, maxAllowedFileSize = 104857600, currentStaticRangeCount = 0;
 	private static long disklimit_bytes = 0, diskremaining_bytes = 0, fileSystemBlocksize = 4096;
-	private static boolean verifyCache = false, rescanCache = false, skipFreeSpaceCheck = false, warnNewClient = false, useLessMemory = false, disableBWM = false, disableDownloadBWM = false, disableLogs = false, flushLogs = false, disableIPOriginCheck = false, disableFloodControl = false, disableSSL = false, triggerCertSyncfile = false;
+	private static boolean verifyCache = false, rescanCache = false, skipFreeSpaceCheck = false, warnNewClient = false, useLessMemory = false, disableBWM = false, disableDownloadBWM = false, disableLogs = false, flushLogs = false, disableIPOriginCheck = false, disableFloodControl = false, disableSSL = false, enableKeepalive = false, triggerCertSyncfile = false;
 
 	public static void setActiveClient(HentaiAtHomeClient client) {
 		activeClient = client;
@@ -280,6 +280,9 @@ public class Settings {
 			else if(setting.equals("disable_ssl")) {
 				disableSSL = value.equals("true");
 			}
+			else if(setting.equals("enable_keepalive")) {
+				enableKeepalive = value.equals("true");
+			}
 			else if(setting.equals("file_redirect_header")) {
 				fileRedirectHeader = value;
 			}
@@ -486,6 +489,9 @@ public class Settings {
 
 	public static boolean isDisableSSL() {
 		return disableSSL;
+	}
+	public static boolean isEnableKeepalive() {
+		return enableKeepalive;
 	}
 	public static boolean isTriggerCertSyncfile() {
 		return triggerCertSyncfile;

@@ -117,6 +117,13 @@ chmod 0710 "$HAH_HOME"/cache
 
 # Setup nginx
 cat <<END >> /etc/nginx/sites-available/hah
+# Configuration for connections to hah backend
+upstream hah-backend {
+        server 127.0.0.1:1080;
+        keepalive 16;
+}
+
+# Actual site configuration
 server {
         # SSL configuration
         listen 443 ssl http2 default_server;
@@ -154,7 +161,9 @@ server {
         ssl_trusted_certificate /etc/nginx/cert/hah.pem;
 
         location / {
-                proxy_pass http://127.0.0.1:2443;
+                proxy_pass http://hah-backend;
+                proxy_set_header Connection "";
+                proxy_http_version 1.1;
                 proxy_set_header Host \$host;
                 proxy_set_header X-Real-IP \$remote_addr;
         }
@@ -186,7 +195,7 @@ rm /etc/nginx/sites-enabled/default
 rm /etc/nginx/modules-enabled/*
 #####
 
-# Set up the H@H client certificate bridge 
+# Set up the H@H client certificate bridge
 cat <<END > /root/hah-cert-handler.sh
 #!/bin/bash
 HAH_HOME=$(printf %q "$HAH_HOME")
@@ -202,7 +211,7 @@ done
 END
 chmod 0700 /root/hah-cert-handler.sh
 
-# Make sure your /root/hah-pass file exists with the 
+# Make sure your /root/hah-pass file exists and read is restricted
 chmod 0600 /root/hah-pass
 
 # run the script now since the crontab entry we will eventually add will not start it until next reboot
@@ -214,7 +223,7 @@ echo sync > "$HAH_HOME"/data/keysync.pipe
 #check if the nginx config is ok
 nginx -T
 
-docker run -d -v "$HAH_HOME":/home/hah -p 127.0.0.1:2443:2443 -u $HAH_UID:$HAH_GID --restart=unless-stopped --log-opt max-size=1m --log-opt max-file=5 --name hah registry.gitlab.com/gruntledw/hentaiathome:latest --port=2443 --disable-ssl --trigger-cert-syncfile  --file-redirect-header=X-Accel-Redirect --file-redirect-path=/redir/ ; docker logs -f hah
+docker run -d -v "$HAH_HOME":/home/hah -w /home/hah -p 127.0.0.1:1080:1080 -u $HAH_UID:$HAH_GID --stop-timeout 60 --restart=unless-stopped --log-opt max-size=1m --log-opt max-file=5 --name hah registry.gitlab.com/gruntledw/hentaiathome:latest --port=1080 --disable-ssl --enable-keepalive --trigger-cert-syncfile --file-redirect-header=X-Accel-Redirect --file-redirect-path=/redir/ ; docker logs -f hah
 
 ```
 Hopefully the H@H client should now start up without problems and the connectivity tests should pass. Hitting Ctrl-C will not stop H@H, just stop following the logs. To actually stop it, run `docker stop hah; docker rm hah`
@@ -229,7 +238,7 @@ Add the following line at the end, then save and quit
 ```
 
 ## Migrating from an old setup
-Migrating? Set the HAH_HOME environment variable and skip the useradd and initial docker run lines. Everything else should work just fine...
+Migrating? Set the HAH_HOME environment variable; make sure everything is owned by the correct user and group; and skip the useradd and initial docker run lines. Everything else should work just fine...
 
 ## Renaming the docker image
 Docker image name a bit to spicy for you?
@@ -270,7 +279,7 @@ How to make these permanent is an exercise for the reader.
 Having connection problems? tcpdump is your friend. Useful commands might look like:
 ```bash
 tcpdump -i enp1s0 -n -vvv -s 1500 -X tcp port 443 or tcp port 80 &
-tcpdump -i docker0 -n -vvv -s 1500 -X tcp port 2443 &
+tcpdump -i docker0 -n -vvv -s 1500 -X tcp port 1080 &
 tail -f /var/log/nginx/access.log /var/log/nginx/error.log &
 docker logs -f hah -n 0 &
 docker restart hah

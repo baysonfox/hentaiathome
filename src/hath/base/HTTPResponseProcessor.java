@@ -33,7 +33,7 @@ public abstract class HTTPResponseProcessor {
 	}
 
 	public int getContentLength() {
-		return 0;
+		return -1;
 	}
 	
 	public int initialize() {

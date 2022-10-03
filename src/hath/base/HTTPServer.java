@@ -179,6 +179,12 @@ public class HTTPServer implements Runnable {
 
 			listener = null;
 		}
+
+		synchronized(sessions) {
+			for(HTTPSession session : sessions) {
+				session.tryShutdown();
+			}
+		}
 	}
 
 	public void pruneFloodControlTable() {
@@ -229,6 +235,10 @@ public class HTTPServer implements Runnable {
 
 	public void allowNormalConnections() {
 		allowNormalConnections = true;
+	}
+
+	public boolean isAllowNormalConnections() {
+		return allowNormalConnections;
 	}
 
 	public void run() {
@@ -294,7 +304,7 @@ public class HTTPServer implements Runnable {
 				}
 				else {
 					// all is well. keep truckin'
-					HTTPSession hs = new HTTPSession(socket, getNewConnId(), localNetworkAccess, allowNormalConnections, isDisableSSL, this);
+					HTTPSession hs = new HTTPSession(socket, getNewConnId(), localNetworkAccess, isDisableSSL, this);
 
 					synchronized(sessions) {
 						sessions.add(hs);

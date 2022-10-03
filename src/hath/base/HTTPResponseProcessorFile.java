@@ -75,7 +75,7 @@ public class HTTPResponseProcessorFile extends HTTPResponseProcessor {
 			return requestedHVFile.getSize();
 		}
 		else {
-			return 0;
+			return -1;
 		}
 	}
 

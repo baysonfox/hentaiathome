@@ -62,7 +62,7 @@ public class HTTPResponseProcessorText extends HTTPResponseProcessor {
 			return responseBytes.length;
 		}
 		else {
-			return 0;
+			return -1;
 		}
 	}
 

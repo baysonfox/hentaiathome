@@ -123,7 +123,7 @@ public class HTTPResponse {
 	private static final Pattern fileindexPattern = Pattern.compile("^\\d+$");
 	private static final Pattern xresPattern = Pattern.compile("^org|\\d+$");
 
-	public void parseRequest(String request, boolean localNetworkAccess, boolean allowNormalConnections) {
+	public void parseRequest(String request, boolean allowNormalConnections) {
 		if(request == null) {
 			Out.debug(session + " Client did not send a request.");
 			responseStatusCode = 400;
@@ -200,7 +200,7 @@ public class HTTPResponse {
 			}
 			else if(requestedHVFile.getLocalFileRef().exists()) {	
 				// hpc will update responseStatusCode
-				hpc = (Settings.getFileRedirectHeader() != null) ? new HTTPResponseProcessorFileRedirect(requestedHVFile) : new HTTPResponseProcessorFileRedirect(requestedHVFile);
+				hpc = (Settings.getFileRedirectHeader() != null) ? new HTTPResponseProcessorFileRedirect(requestedHVFile) : new HTTPResponseProcessorFile(requestedHVFile);
 				session.getHTTPServer().getHentaiAtHomeClient().getCacheHandler().markRecentlyAccessed(requestedHVFile);
 			}
 			else if(Settings.isStaticRange(fileid)) {

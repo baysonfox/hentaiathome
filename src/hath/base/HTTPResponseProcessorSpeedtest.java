@@ -27,7 +27,7 @@ import java.util.Random;
 import java.nio.ByteBuffer;
 
 public class HTTPResponseProcessorSpeedtest extends HTTPResponseProcessor {
-	private int testsize = 0, writeoff = 0;
+	private int testsize = -1, writeoff = 0;
 	private final int randomLength = 8192;
 	private byte[] randomBytes;
 

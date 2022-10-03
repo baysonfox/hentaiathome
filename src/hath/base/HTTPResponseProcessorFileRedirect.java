@@ -38,11 +38,16 @@ public class HTTPResponseProcessorFileRedirect extends HTTPResponseProcessor {
 	public int initialize() {
 		int responseStatusCode = 200;
         addHeaderField(Settings.getFileRedirectHeader(), Settings.getFileRedirectPath() + requestedHVFile.getLocalFilePath());
+		Stats.fileSent();
 		return responseStatusCode;
 	}
 
 	public String getContentType() {
 		return requestedHVFile.getMimeType();
+	}
+
+	public int getContentLength() {
+		return 0;
 	}
 
 	public ByteBuffer getPreparedTCPBuffer() throws Exception {
