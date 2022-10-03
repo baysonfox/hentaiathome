@@ -1,5 +1,6 @@
 stages:
   - build
+  - native-image
   - docker
 
 build-job:
@@ -11,21 +12,53 @@ build-job:
     - docker
   script:
     - microdnf install findutils
-    - ./make.sh && ./makejar.sh && ./make-native-image.sh
+    - ./make.sh && ./makejar.sh
   artifacts:
     paths:
       - build/HentaiAtHome.jar
       - build/HentaiAtHomeGUI.jar
       - build/HentaiAtHome
 
-docker-job:
-  stage: docker
+native-image:
+  stage: native-image
+  image:
+    name: ghcr.io/graalvm/native-image:latest
+    entrypoint: [ "/bin/bash", "-l", "-c" ]
   tags:
-    - shell
+    - docker
   dependencies:
     - build-job
   script:
-    - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
-    - docker build -t $CI_REGISTRY_IMAGE:latest .
-    - docker push $CI_REGISTRY_IMAGE:latest
+    - ./make-native-image.sh
+  artifacts:
+    paths:
+      - build/HentaiAtHome
 
+
+docker-job-main:
+  stage: docker
+  only:
+    refs:
+      - main
+  tags:
+    - shell
+  dependencies:
+    - native-image
+  script:
+    - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
+    - docker build -t $CI_REGISTRY_IMAGE:dev .
+    - docker push $CI_REGISTRY_IMAGE:dev
+
+docker-job-branch:
+  stage: docker
+  except:
+    refs:
+      - main
+  tags:
+    - shell
+  dependencies:
+    - native-image
+  script:
+    - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
+    - docker build -t $CI_REGISTRY_IMAGE:dev-$CI_COMMIT_REF_SLUG .
+    - docker push $CI_REGISTRY_IMAGE:dev-$CI_COMMIT_REF_SLUG
