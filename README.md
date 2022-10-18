@@ -77,7 +77,7 @@ In the example configuration bellow, we assume we want everything stored under `
 
 ## Install Instructions
 
-To not need to edit commands to much we will occasionally set some environment variables. **If you log out, make sure to set them again** before continuing to copy and paste commands. Otherwise some commands may **destroy your system**.
+To not need to edit commands too much we will occasionally set some environment variables. **If you log out, make sure to set them again** before continuing to copy and paste commands. Otherwise some commands may **destroy your system**.
 
 ```bash
 HAH_HOME=/vol/hah
@@ -201,7 +201,7 @@ cat <<END > /root/hah-cert-handler.sh
 HAH_HOME=$(printf %q "$HAH_HOME")
 while /bin/true; do
         cat "\$HAH_HOME"/data/keysync.pipe > /dev/null
-        if [ -n  "\$HAH_HOME"/data/hathcert.p12 ]; then
+        if [ -s "\$HAH_HOME"/data/hathcert.p12 ] && [ -r "\$HAH_HOME"/data/hathcert.p12 ]; then
                 openssl pkcs12 -info -in "\$HAH_HOME"/data/hathcert.p12 -passin file:/root/hah-pass -nodes -nocerts > /etc/nginx/cert/private/hah.key
                 openssl pkcs12 -info -in "\$HAH_HOME"/data/hathcert.p12 -passin file:/root/hah-pass -nodes -nokeys > /etc/nginx/cert/hah.pem
                 systemctl reload nginx
