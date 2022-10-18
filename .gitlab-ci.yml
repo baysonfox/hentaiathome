@@ -17,7 +17,6 @@ build-job:
     paths:
       - build/HentaiAtHome.jar
       - build/HentaiAtHomeGUI.jar
-      - build/HentaiAtHome
 
 native-image:
   stage: native-image
