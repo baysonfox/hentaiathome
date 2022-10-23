@@ -113,7 +113,8 @@ public class HTTPSession implements Runnable {
 				info = this.toString() + " ";
 				rcvdBytes = 0;
 				socket.setSoTimeout(enableKeepalive? 300000 : 10000); // Allow up to 5 minutes in between requests
-
+				sessionStartTime = System.currentTimeMillis();
+				lastPacketSend = 0;
 
 				// read the header and parse the request - this will also update the response code and initialize the proper response processor
 				String request = null;
@@ -360,7 +361,7 @@ public class HTTPSession implements Runnable {
 			return true;
 		}
 		else {
-			int startTimeout = hr != null ? (hr.isServercmd() ? 1800000 : 180000) : 30000;
+			int startTimeout = hr != null ? (hr.isServercmd() ? 1800000 : 180000) : (enableKeepalive? 320000 : 30000);
 
 			if( (sessionStartTime > 0 && sessionStartTime < nowtime - startTimeout) || (lastPacketSend > 0 && lastPacketSend < nowtime - 30000) ) {
 				return true;
