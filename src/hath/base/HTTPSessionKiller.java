@@ -44,7 +44,7 @@ public class HTTPSessionKiller implements Runnable {
 
 		for(HTTPSession session : remove) {
 			// jama
-			session.forceCloseSocket();
+			session.forceShutdown();
 		}
 
 		Out.debug("Kill thread finished closing " + remove.size() + " sessions");

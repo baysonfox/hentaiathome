@@ -59,7 +59,7 @@ public class HTTPSession implements Runnable {
 	private boolean localNetworkAccess, useHeaderAddress, enableKeepalive;
 	volatile boolean active = false, forceClose = false;
 	private InetAddress remoteAddress;
-	private long sessionStartTime, lastPacketSend;
+	private volatile long sessionStartTime, lastPacketSend;
 
 	private HTTPResponse hr;
 
@@ -82,15 +82,24 @@ public class HTTPSession implements Runnable {
 		httpServer.removeHTTPSession(this);
 	}
 
+	public void forceShutdown() {
+		forceClose = true;
+		try {
+			myThread.interrupt();
+		} catch (Exception e) {
+			Out.info("HTTPSession: Unable to interrupt thread with connId = " + connId);
+		}
+		try {
+			forceCloseSocket();
+		} catch (Exception e) {
+			Out.info("HTTPSession: Unable to close socket for thread with connId = " + connId);
+		}
+	}
+
 	public void tryShutdown() {
 		forceClose = true;
 		if (!active) {
-			try {
-				myThread.interrupt();
-				forceCloseSocket();
-			} catch (Exception e) {
-				Out.info("HTTPSession: Unable to interrupt thread with connId = " + connId);
-			}
+			forceShutdown();
 		}
 	}
 
@@ -361,7 +370,12 @@ public class HTTPSession implements Runnable {
 			return true;
 		}
 		else {
-			int startTimeout = hr != null ? (hr.isServercmd() ? 1800000 : 180000) : (enableKeepalive? 320000 : 30000);
+			int startTimeout;
+			if (enableKeepalive) {
+				startTimeout = hr != null ? (hr.isServercmd() ? 2090000 : 470000) : 320000;
+			} else {
+				startTimeout = hr != null ? (hr.isServercmd() ? 1800000 : 180000) : 30000;
+			}
 
 			if( (sessionStartTime > 0 && sessionStartTime < nowtime - startTimeout) || (lastPacketSend > 0 && lastPacketSend < nowtime - 30000) ) {
 				return true;
