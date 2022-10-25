@@ -160,6 +160,17 @@ server {
         # verify chain of trust of OCSP response using Root CA and Intermediate certs
         ssl_trusted_certificate /etc/nginx/cert/hah.pem;
 
+        # Override response timeouts for threaded_proxy_test path: default is too short if remote client is slow
+        location /servercmd/threaded_proxy_test/ {
+                proxy_pass http://hah-backend/servercmd/threaded_proxy_test/;
+                proxy_set_header Connection "";
+                proxy_http_version 1.1;
+                proxy_set_header Host \$host;
+                proxy_set_header X-Real-IP \$remote_addr;
+                send_timeout 1800s;
+                proxy_read_timeout 1800s;
+        }
+        # Actual backend proxy configuration
         location / {
                 proxy_pass http://hah-backend;
                 proxy_set_header Connection "";
