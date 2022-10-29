@@ -11,7 +11,7 @@ build-job:
   tags:
     - docker
   script:
-    - microdnf install findutils
+    - microdnf install -y findutils
     - ./make.sh && ./makejar.sh
   artifacts:
     paths:
