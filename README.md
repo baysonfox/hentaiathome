@@ -213,8 +213,10 @@ HAH_HOME=$(printf %q "$HAH_HOME")
 while /bin/true; do
         cat "\$HAH_HOME"/data/keysync.pipe > /dev/null
         if [ -s "\$HAH_HOME"/data/hathcert.p12 ] && [ -r "\$HAH_HOME"/data/hathcert.p12 ]; then
-                openssl pkcs12 -info -in "\$HAH_HOME"/data/hathcert.p12 -passin file:/root/hah-pass -nodes -nocerts > /etc/nginx/cert/private/hah.key
-                openssl pkcs12 -info -in "\$HAH_HOME"/data/hathcert.p12 -passin file:/root/hah-pass -nodes -nokeys > /etc/nginx/cert/hah.pem
+                openssl pkcs12 -info -in "\$HAH_HOME"/data/hathcert.p12 -passin file:/root/hah-pass -nodes -nocerts -legacy > /etc/nginx/cert/private/hah.key \
+                || openssl pkcs12 -info -in "\$HAH_HOME"/data/hathcert.p12 -passin file:/root/hah-pass -nodes -nocerts > /etc/nginx/cert/private/hah.key
+                openssl pkcs12 -info -in "\$HAH_HOME"/data/hathcert.p12 -passin file:/root/hah-pass -nodes -nokeys -legacy > /etc/nginx/cert/hah.pem \
+                || openssl pkcs12 -info -in "\$HAH_HOME"/data/hathcert.p12 -passin file:/root/hah-pass -nodes -nokeys > /etc/nginx/cert/hah.pem
                 systemctl reload nginx
         fi
         sleep 5

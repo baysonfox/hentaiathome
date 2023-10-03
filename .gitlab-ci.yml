@@ -6,7 +6,7 @@ stages:
 build-job:
   stage: build
   image: 
-    name: ghcr.io/graalvm/native-image:latest
+    name: ghcr.io/graalvm/native-image-community:latest
     entrypoint: [ "/bin/bash", "-l", "-c" ]
   tags:
     - docker
@@ -21,7 +21,7 @@ build-job:
 native-image:
   stage: native-image
   image:
-    name: ghcr.io/graalvm/native-image:latest
+    name: ghcr.io/graalvm/native-image-community:latest
     entrypoint: [ "/bin/bash", "-l", "-c" ]
   tags:
     - docker
