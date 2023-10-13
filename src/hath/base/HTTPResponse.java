@@ -125,7 +125,7 @@ public class HTTPResponse {
 	private static final Pattern fileindexPattern = Pattern.compile("^\\d+$");
 	private static final Pattern xresPattern = Pattern.compile("^org|\\d+$");
 
-	public void parseRequest(String request, boolean allowNormalConnections) {
+	public void parseRequest(String request, boolean allowNormalConnections, boolean isEarlyData) {
 		if(request == null) {
 			Out.debug(session + " Client did not send a request.");
 			responseStatusCode = 400;
@@ -234,6 +234,12 @@ public class HTTPResponse {
 				responseStatusCode = 403;
 				return;
 			}
+
+			if (isEarlyData) {
+				Out.debug(session + " Got a servercmd in early data");
+				responseStatusCode = 425;
+				return;
+			}
 			
 			if(urlparts.length < 6) {
 				Out.debug(session + " Got a malformed servercmd");
@@ -279,6 +285,12 @@ public class HTTPResponse {
 			if(!Tools.getSHA1String("hentai@home-speedtest-" + testsize + "-" + testtime + "-" + Settings.getClientID() + "-" + Settings.getClientKey()).equals(testkey)) {
 				Out.debug(session + " Got a speedtest request with invalid key");
 				responseStatusCode = 403;
+				return;
+			}
+
+			if (isEarlyData) {
+				Out.debug(session + " Got a speedtest in early data");
+				responseStatusCode = 425;
 				return;
 			}
 

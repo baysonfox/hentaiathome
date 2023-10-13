@@ -48,6 +48,7 @@ public class HTTPSession implements Runnable {
 
 	private static final Pattern getheadPattern = Pattern.compile("^(?:GET|HEAD) .* HTTP/(\\d+?(?:\\.\\d+?)?)$", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
 	private static final Pattern realIpPattern = Pattern.compile("^X-Real-IP: ([\\d:\\.]+)$", Pattern.CASE_INSENSITIVE);
+	private static final Pattern earlyHeaderPattern = Pattern.compile("^Early-Data: 1$", Pattern.CASE_INSENSITIVE);
 	private static final Pattern connectionPattern = Pattern.compile("^Connection: (.*)$", Pattern.CASE_INSENSITIVE);
 	private static final Pattern keepalivePattern = Pattern.compile("keep-alive", Pattern.CASE_INSENSITIVE);
 
@@ -56,19 +57,20 @@ public class HTTPSession implements Runnable {
 	private int connId;
 	private int requestCount = 0;
 	private Thread myThread;
-	private boolean localNetworkAccess, useHeaderAddress, enableKeepalive;
+	private boolean localNetworkAccess, useHeaderAddress, enableKeepalive, disableEarlyData;
 	volatile boolean active = false, forceClose = false;
 	private InetAddress remoteAddress;
 	private volatile long sessionStartTime, lastPacketSend;
 
 	private HTTPResponse hr;
 
-	public HTTPSession(Socket socket, int connId, boolean localNetworkAccess, boolean disableSSL, HTTPServer httpServer) {
+	public HTTPSession(Socket socket, int connId, boolean localNetworkAccess, boolean disableSSL, boolean disableEarlyData, HTTPServer httpServer) {
 		sessionStartTime = System.currentTimeMillis();
 		this.socket = socket;
 		this.connId = connId;
 		this.localNetworkAccess = localNetworkAccess;
 		this.useHeaderAddress = disableSSL;
+		this.disableEarlyData = disableEarlyData;
 		this.httpServer = httpServer;
 		enableKeepalive = Settings.isEnableKeepalive();
 	}
@@ -129,6 +131,7 @@ public class HTTPSession implements Runnable {
 				String request = null;
 				remoteAddress = null;
 				boolean connectionHeader = false;
+				boolean gotEarlyHeader = disableEarlyData, isEarlyData = false;
 
 				// ignore every single line except for the request one. we SSL now, so if there is no end-of-line, just wait for the timeout
 				do {
@@ -167,6 +170,9 @@ public class HTTPSession implements Runnable {
 								forceClose = true;
 							}
 						}
+						else if (!gotEarlyHeader && (matcher = earlyHeaderPattern.matcher(read)).matches()) {
+							gotEarlyHeader = isEarlyData = true;
+						}
 						else if(read.isEmpty()) {
 							break;
 						}
@@ -182,7 +188,7 @@ public class HTTPSession implements Runnable {
 				}
 
 				hr = new HTTPResponse(this);
-				hr.parseRequest(request, httpServer.isAllowNormalConnections());
+				hr.parseRequest(request, httpServer.isAllowNormalConnections(), isEarlyData);
 
 				// get the status code and response processor - in case of an error, this will be a text type with the error message
 				hpc = hr.getHTTPResponseProcessor();
@@ -354,6 +360,7 @@ public class HTTPSession implements Runnable {
 			case 404: return "HTTP/1.1 404 Not Found" + CRLF;
 			case 405: return "HTTP/1.1 405 Method Not Allowed" + CRLF;
 			case 418: return "HTTP/1.1 418 I'm a teapot" + CRLF;
+			case 425: return "HTTP/3.0 425 Too early" + CRLF;
 			case 501: return "HTTP/1.1 501 Not Implemented" + CRLF;
 			case 502: return "HTTP/1.1 502 Bad Gateway" + CRLF;
 			case 503: return "HTTP/1.1 503 Service Unavailable" + CRLF;

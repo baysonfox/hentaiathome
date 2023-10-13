@@ -54,7 +54,7 @@ public class Settings {
 
 	private static int clientID = 0, clientPort = 0, throttle_bytes = 0, overrideConns = 0, serverTimeDelta = 0, maxAllowedFileSize = 1073741824, currentStaticRangeCount = 0;
 	private static long disklimit_bytes = 0, diskremaining_bytes = 0, fileSystemBlocksize = 4096;
-	private static boolean verifyCache = false, rescanCache = false, skipFreeSpaceCheck = false, warnNewClient = false, useLessMemory = false, disableBWM = false, disableDownloadBWM = false, disableLogs = false, flushLogs = false, disableIPOriginCheck = false, disableFloodControl = false, disableSSL = false, enableKeepalive = false, triggerCertSyncfile = false;
+	private static boolean verifyCache = false, rescanCache = false, skipFreeSpaceCheck = false, warnNewClient = false, useLessMemory = false, disableBWM = false, disableDownloadBWM = false, disableLogs = false, flushLogs = false, disableIPOriginCheck = false, disableFloodControl = false, disableSSL = false, disableEarlyData = false, enableKeepalive = false, triggerCertSyncfile = false;
 
 	public static void setActiveClient(HentaiAtHomeClient client) {
 		activeClient = client;
@@ -277,6 +277,9 @@ public class Settings {
 			else if(setting.equals("disable_ssl")) {
 				disableSSL = value.equals("true");
 			}
+			else if(setting.equals("disable_earlydata")) {
+				disableEarlyData = value.equals("true");
+			}
 			else if(setting.equals("enable_keepalive")) {
 				enableKeepalive = value.equals("true");
 			}
@@ -489,6 +492,9 @@ public class Settings {
 	}
 	public static boolean isEnableKeepalive() {
 		return enableKeepalive;
+	}
+	public static boolean isDisableEarlyData() {
+		return disableEarlyData;
 	}
 	public static boolean isTriggerCertSyncfile() {
 		return triggerCertSyncfile;

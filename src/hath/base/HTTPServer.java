@@ -50,7 +50,7 @@ public class HTTPServer implements Runnable {
 	private Thread myThread = null;
 	private List<HTTPSession> sessions;
 	private int sessionCount = 0, currentConnId = 0;
-	private boolean allowNormalConnections = false, isRestarting = false, isTerminated = false, isDisableSSL = false;
+	private boolean allowNormalConnections = false, isRestarting = false, isTerminated = false, isDisableSSL = false, isDisableEarlyData = false;
 	private Hashtable<String,FloodControlEntry> floodControlTable;
 	private Date certExpiry;
 
@@ -71,6 +71,7 @@ public class HTTPServer implements Runnable {
 		try {
 			final String certPass = Settings.getClientKey();
 			isDisableSSL = Settings.isDisableSSL();
+			isDisableEarlyData = Settings.isDisableEarlyData();
 			boolean isTriggerCertSyncfile  = Settings.isTriggerCertSyncfile();
 
 			Out.info("Requesting certificate from server...");
@@ -305,7 +306,7 @@ public class HTTPServer implements Runnable {
 				}
 				else {
 					// all is well. keep truckin'
-					HTTPSession hs = new HTTPSession(socket, getNewConnId(), localNetworkAccess, isDisableSSL, this);
+					HTTPSession hs = new HTTPSession(socket, getNewConnId(), localNetworkAccess, isDisableSSL, isDisableEarlyData, this);
 
 					synchronized(sessions) {
 						sessions.add(hs);
