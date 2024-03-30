@@ -6,7 +6,7 @@
 The purpose of this fork of the [HentaiAtHome client](https://e-hentai.org/hentaiathome.php) is to allow it to run behind an off the shelf web server (currently nginx) and only handle the client functionality. This web server is then responsible for protocol negotiation and cached file service, based entirely on directions from the H@H client.
 
 Among other things, this can add the following features for "free":
-- Support for newer protocol features HTTP2, HSTS, OCSP
+- Support for newer protocol features HTTP3, HTTP2, HSTS, OCSP
 - proper etag, if-modified-since and range support
 
 This along with GraalVM native-image might also mean lower CPU and memory usage, especially if you were already running a webserver for other purposes.
@@ -58,21 +58,25 @@ Make sure to replace `registry.gitlab.com/gruntledw/hentaiathome:latest` by `hen
 [Install docker](https://docs.docker.com/engine/install/)
 
 
-Install the nginx software. On Ubuntu or Debian:
-```bash
-apt-get install nginx-light
-```
-You don't need to configure it yet.
+Install the nginx software. If applicable, you do not need any of the optional modules.
+
+If you don't want HTTP3 support, you can likely just install the version that comes with your distribution, but will need to remove the `map {}`, `add_header Alt-Svc`, `http2 on;`, `ssl_early_data on;`, `proxy_set_header Early-Data` lines and replace all the `listen 443` lines with `listen 443 ssl http2 default_server;`
+
+To install a version of nginx that supports HTTP3, follow the [nginx install guide](https://docs.nginx.com/nginx/admin-guide/installing-nginx/installing-nginx-open-source/). Make sure you install at least version 1.25.2.
+
+You don't need to configure nginx yet.
 
 
 If you have a firewall, make sure it's configured to allow incoming connections on the correct port.
 If you're using firewalld the commands will look something like:
 ```bash
-firewall-cmd --permanent --zone=public  --add-service=https
+firewall-cmd --permanent --zone=public --add-service=https
+firewall-cmd --permanent --zone=public --add-port=443/udp # For HTTP3
 firewall-cmd --reload
 ```
 
 Decide where you want to keep your HentaiAtHome data. I recommend giving it its own volume: 1) There's no risk either it or other services on the system end up using excess amounts of space; 2) You can add mount options like noatime,noexec,nodev,nosuid to make it more secure.
+
 In the example configuration bellow, we assume we want everything stored under `/vol`. It can be in a more regular location like `/home` or `/var/lib`. Just make sure to replace the paths correctly.
 
 ## Install Instructions
@@ -123,13 +127,21 @@ upstream hah-backend {
         keepalive 16;
 }
 
+map $server_protocol $altSvc {
+        default    'h3=":443"; ma=86400, h2=":443"; ma=86400';
+        'HTTP/2.0' 'h3=":443"; ma=86400';
+        'HTTP/3.0' '';
+}
+
 # Actual site configuration
 server {
         # SSL configuration
-        listen 443 ssl http2 default_server;
+        listen 443 quic reuseport;
+        listen 443 ssl default_server;
+        http2 on;
         server_name _;
         # Don't want this to be the default site? Use this instead:
-        #listen 443 ssl http2;
+        #listen 443 ssl;
         #server_name *.hath.network;
 
         # This SSL configuration is mostly from the mozilla SSL configuration generator
@@ -141,6 +153,7 @@ server {
         ssl_session_timeout 1d;
         ssl_session_cache shared:MozSSL:10m;  # about 40000 sessions
         ssl_session_tickets off;
+        ssl_early_data on;
 
         # curl https://ssl-config.mozilla.org/ffdhe2048.txt > /etc/nginx/dhparam
         ssl_dhparam /etc/nginx/dhparam;
@@ -161,11 +174,15 @@ server {
         # verify chain of trust of OCSP response using Root CA and Intermediate certs
         ssl_trusted_certificate /etc/nginx/cert/hah.pem;
 
+        # Add alternate service header for HTTP3 discovery
+        add_header Alt-Svc $altSvc always;
+
         # Override response timeouts for threaded_proxy_test path: default is too short if remote client is slow
         location /servercmd/threaded_proxy_test/ {
                 proxy_pass http://hah-backend/servercmd/threaded_proxy_test/;
                 proxy_set_header Connection "";
                 proxy_http_version 1.1;
+                proxy_set_header Early-Data $ssl_early_data;
                 proxy_set_header Host \$host;
                 proxy_set_header X-Real-IP \$remote_addr;
                 send_timeout 1800s;
@@ -176,6 +193,7 @@ server {
                 proxy_pass http://hah-backend;
                 proxy_set_header Connection "";
                 proxy_http_version 1.1;
+                proxy_set_header Early-Data $ssl_early_data;
                 proxy_set_header Host \$host;
                 proxy_set_header X-Real-IP \$remote_addr;
         }
@@ -183,6 +201,7 @@ server {
                 internal;
                 alias $HAH_HOME/;
                 add_header Cache-Control "public, max-age=31536000";
+                add_header Alt-Svc $altSvc always;
         }
 
         # Default root. Should never be used
@@ -282,6 +301,8 @@ If it's a whole other interface, you can use alternate route tables. Use `ip a s
 ip route add default via remote.gateway.ip src local.ip dev iface table 10
 ip route add 172.HATH_NET.NETWORK.ADDRESS/NETMASK dev $HATH_NET table 10
 ip rule add from 172.HATH_NET.NETWORK.ADDRESS/NETMASK dev $HATH_NET table 10
+# Add rules for every other network
+ip route add OTHER_NETWORK/NETMASK dev other_iface table 10
 # You might also want to add this:
 ip rule add from local.ip/32 lookup 10
 ````
@@ -293,7 +314,7 @@ How to make these permanent is an exercise for the reader.
 Having connection problems? tcpdump is your friend. Useful commands might look like:
 ```bash
 tcpdump -i enp1s0 -n -vvv -s 1500 -X tcp port 443 or tcp port 80 &
-tcpdump -i docker0 -n -vvv -s 1500 -X tcp port 1080 &
+tcpdump -i docker0 -n -vvv -s 1500 -A tcp port 1080 &
 tail -f /var/log/nginx/access.log /var/log/nginx/error.log &
 docker logs -f hah -n 0 &
 docker restart hah
